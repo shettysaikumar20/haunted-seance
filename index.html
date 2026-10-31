@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171b14" />
+    <meta name="description" content="A private, local-first remembrance garden powered by open-weight AI and Arduino UNO Q." />
+    <title>Marigold Archive — Keep the story. Let it bloom.</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#top" aria-label="Marigold Archive home">
+          <span class="brand-mark">✳</span><span>marigold<span class="brand-light">archive</span></span>
+        </a>
+        <div class="side-label">YOUR GARDEN</div>
+        <button class="nav-item active" data-view="garden"><span>✿</span> Memory garden <span class="nav-count" id="nav-count">03</span></button>
+        <button class="nav-item" data-view="stories"><span>▤</span> Story seeds</button>
+        <button class="nav-item" data-view="lantern"><span>✧</span> UNO Q Lantern</button>
+        <button class="nav-item" data-view="about"><span>◌</span> Our promise</button>
+        
+        <div class="sidebar-hardware">
+          <div class="hardware-label">PHYSICAL HARDWARE</div>
+          <div class="hardware-card">
+            <div class="hardware-indicator" id="hw-indicator"></div>
+            <div>
+              <strong id="hw-title">Arduino UNO Q</strong>
+              <p id="hw-desc">Bridge RPC & 8×13 LED Matrix ready</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-bottom">
+          <div class="privacy-card">
+            <div class="privacy-icon">⌁</div>
+            <div>
+              <strong>Your stories stay yours.</strong>
+              <p>Saved only in this browser. No account. Zero cloud.</p>
+            </div>
+            <span class="lock-dot"></span>
+          </div>
+          <div class="sidebar-foot">A SMALL PLACE FOR WHAT<br />SHOULD NOT BE LOST <span>✳</span></div>
+        </div>
+      </aside>
+
+      <main id="top" class="main-area">
+        <header class="topbar">
+          <div class="crumb">MY GARDEN <span>/</span> <b>ELENA'S STORIES</b></div>
+          <div class="topbar-actions">
+            <input type="file" id="import-file" accept=".json" style="display:none" />
+            <button class="text-button" id="import-btn">↙ &nbsp;Import archive</button>
+            <button class="text-button" id="export-btn">↗ &nbsp;Export archive</button>
+          </div>
+        </header>
+
+        <section class="welcome" id="garden-view">
+          <div class="welcome-copy">
+            <div class="eyebrow"><i></i> A LIVING REMEMBRANCE · DÍA DE LOS MUERTOS</div>
+            <h1>Keep the story.<br /><em>Let it bloom.</em></h1>
+            <p>Not an eerie avatar or an artificial voice. A gentle, local-first sanctuary for the memories, recipes, and moments we carry forward.</p>
+            <div class="welcome-actions">
+              <button class="button button-dark" id="open-add">＋ &nbsp;Plant a story</button>
+              <button class="button button-quiet" id="open-lantern">✧ &nbsp;Gather the stories</button>
+            </div>
+          </div>
+          <div class="garden-art" aria-label="Illustration of marigolds in a dusk garden">
+            <div class="moon"></div>
+            <div class="hill hill-back"></div>
+            <div class="hill hill-front"></div>
+            <div class="flower flower-one"><i></i></div>
+            <div class="flower flower-two"><i></i></div>
+            <div class="flower flower-three"><i></i></div>
+            <div class="flower flower-four"><i></i></div>
+            <div class="firefly fly-one"></div>
+            <div class="firefly fly-two"></div>
+            <div class="art-caption">
+              <span>✦ &nbsp; STORIES TAKE ROOT HERE</span>
+              <b>where remembering<br />is its own kind of care</b>
+            </div>
+          </div>
+        </section>
+
+        <section class="garden-heading">
+          <div>
+            <div class="eyebrow">THE THINGS THAT STAY</div>
+            <h2>Elena's garden <span id="story-total">03 stories</span></h2>
+          </div>
+          <div class="garden-heading-actions">
+            <button class="button button-outline" id="open-add-2">＋ Add a story</button>
+          </div>
+        </section>
+
+        <section class="memory-grid" id="memory-grid" aria-live="polite"></section>
+
+        <section class="lantern-panel" id="lantern-panel">
+          <div class="lantern-ornament">✳</div>
+          <div class="lantern-copy">
+            <div class="eyebrow">A LOCAL MODEL, A PHYSICAL LANTERN</div>
+            <h2>Let the stories<br /><em>find each other.</em></h2>
+            <p>Gather the memories into a tender reflection. An open-weight model runs on your machine; every line strictly cites the stories that inspired it.</p>
+            
+            <div class="matrix-card" id="matrix-card">
+              <div class="matrix-header">
+                <div class="matrix-tag"><span class="matrix-dot">●</span> ARDUINO UNO Q · 8×13 LED MATRIX LANTERN</div>
+                <button class="button-matrix-test" id="test-matrix-btn" title="Simulate the STM32 8x13 LED matrix bloom">✿ Test Bloom</button>
+              </div>
+              <div class="matrix-grid" id="matrix-grid" aria-label="Arduino UNO Q 8x13 LED Matrix"></div>
+              <div class="matrix-footer">
+                <span id="bridge-status">BRIDGE RPC: READY</span>
+                <span id="matrix-timer">STANDBY (2.6s BLOOM)</span>
+              </div>
+            </div>
+
+            <div class="lantern-meta">
+              <span class="local-pill"><i></i> OPEN-WEIGHT · ON-DEVICE</span>
+              <span>NO IMPERSONATION · YOU DECIDE WHAT FEELS TRUE</span>
+            </div>
+          </div>
+
+          <div class="lantern-action">
+            <div class="model-control">
+              <label for="model-name">LOCAL MODEL</label>
+              <input id="model-name" value="qwen2.5:3b" aria-label="Ollama model name" />
+            </div>
+            <button class="button button-light" id="create-lantern">✧ &nbsp;Gather the stories</button>
+            <p id="ollama-status">Checking local runtime…</p>
+          </div>
+        </section>
+
+        <footer class="page-foot">
+          <span>MADE WITH CARE, HELD CLOSE · HACKTOBERFEST 2026</span>
+          <span>THE ARCHIVE IS YOURS TO KEEP OR DELETE &nbsp; ✳</span>
+        </footer>
+      </main>
+    </div>
+
+    <!-- Plant Story Modal -->
+    <dialog id="story-dialog" class="modal">
+      <form method="dialog" class="modal-card" id="story-form">
+        <button class="modal-close" value="cancel" aria-label="Close">×</button>
+        <div class="eyebrow">PLANT A STORY</div>
+        <h2>What do you want<br /><em>to keep close?</em></h2>
+        <p class="modal-intro">A detail, a saying, a small moment. It doesn't have to be important to anyone else.</p>
+        <label>STORY TITLE
+          <input name="title" maxlength="72" placeholder="The orange cake on Sundays" required />
+        </label>
+        <div class="form-row">
+          <label>WHO IS IT ABOUT?
+            <input name="person" maxlength="40" placeholder="Elena" required />
+          </label>
+          <label>WHEN? <span class="label-soft">(IF YOU REMEMBER)</span>
+            <input name="year" maxlength="20" placeholder="Summer, 1988" />
+          </label>
+        </div>
+        <label>THE STORY
+          <textarea name="body" rows="5" maxlength="1200" placeholder="Tell it the way you remember it…" required></textarea>
+        </label>
+        <div class="form-note">⌁ &nbsp;Saved in this browser only. Never sent to a server.</div>
+        <div class="modal-actions">
+          <button class="button button-dark" value="save" id="save-story">Plant this story &nbsp;→</button>
+          <button class="button button-quiet" value="cancel">Maybe later</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Reflection Modal -->
+    <dialog id="lantern-dialog" class="modal">
+      <div class="modal-card lantern-result">
+        <button class="modal-close" id="close-result" aria-label="Close">×</button>
+        <div class="eyebrow">A REFLECTION, GATHERED LOCALLY</div>
+        <h2 id="result-title">The things<br /><em>that stayed.</em></h2>
+        
+        <div class="dialog-matrix-preview">
+          <div class="dialog-matrix-badge">ARDUINO 8×13 LANTERN GLOW</div>
+          <div class="matrix-grid-small" id="dialog-matrix-grid"></div>
+        </div>
+
+        <div id="result-content" class="result-content"></div>
+        <div class="result-note">A reflection, not a replacement for your memories. Keep only what feels true.</div>
+        <button class="button button-dark" id="close-result-btn">Return to the garden</button>
+      </div>
+    </dialog>
+
+    <!-- Story View Modal -->
+    <dialog id="story-view-dialog" class="modal">
+      <div class="modal-card story-view">
+        <button class="modal-close" id="close-story-view" aria-label="Close">×</button>
+        <div class="eyebrow" id="view-person"></div>
+        <h2 id="view-title"></h2>
+        <div class="story-date" id="view-date"></div>
+        <div class="story-full" id="view-body"></div>
+        <div class="story-view-actions">
+          <button class="button button-outline" id="delete-story">Remove this story</button>
+          <button class="button button-dark" id="close-story-btn">Back to the garden</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

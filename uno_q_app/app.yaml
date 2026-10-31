@@ -1,0 +1,7 @@
+name: Marigold Archive
+description: A private remembrance garden with local AI reflections and an Arduino memory lantern.
+icon: ✳
+ports:
+  - 7000
+bricks:
+  - arduino:llm: {}
