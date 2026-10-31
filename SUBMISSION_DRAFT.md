@@ -28,7 +28,7 @@ No accounts. No telemetry. No remote cloud server. No subscription. Just a small
 
 ## Demo
 
-- **Repository:** `https://github.com/[your-username]/marigold-archive` *(replace with your public repository link)*
+- **Repository:** `https://github.com/shettysaikumar20/haunted-seance`
 - **Live / Offline Demo:** Can be run locally with `python -m http.server 8000` connected to Ollama, or deployed directly to an Arduino UNO Q using Arduino App Lab.
 
 ```
