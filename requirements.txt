@@ -1,0 +1,4 @@
+# Marigold Archive & Ghost in the Machine
+# Zero external package dependencies needed; server uses Python standard library.
+# Optional dependencies if running with production ASGI/WSGI wrappers:
+# gunicorn>=21.2.0

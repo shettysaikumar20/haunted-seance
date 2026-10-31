@@ -1,12 +1,33 @@
-# Marigold Archive
+# Ghost in the Machine & Marigold Archive
 
-**Keep the story. Let it bloom.**
+**Keep the story. Awaken the machine.**
 
-Marigold Archive is a local-first remembrance garden for family stories, built for the Hacktoberfest Open-Source AI Challenge: Week 4, **“Ghost in the Machine”**. 
+An interactive horror and remembrance experience built for the Hacktoberfest Open-Source AI Challenge: Week 4, **“Ghost in the Machine”**. 
 
-A person writes and curates the memories; an open-weight model running entirely on their own device notices quiet connections across the stories and weaves a short, tender reflection. Every reflection strictly cites source story IDs (`[M01]`, `[M02]`), refuses to hallucinate facts, and **never impersonates the person being remembered**.
+The project features two interconnected modes honoring Halloween & Día de los Muertos:
+1. **The Haunted Seance Terminal:** A spooky, possessed terminal experience with procedural Web Audio soundscapes, volumetric fog particles, jumpscare camera shockwaves, and an offline horror lore engine.
+2. **The Remembrance Garden (Marigold Archive):** A private, local-first garden where a person curates memories, and an open-weight model offers a gentle reflection citing source IDs (`[M01]`, `[M02]`) without ever impersonating the deceased person.
+3. **Arduino UNO Q 8×13 LED Matrix:** Physical hardware integration with Qualcomm Linux + STM32U585 MCU over Bridge RPC, illuminating physical glyphs (Skull, Eye, Cross, and Marigold).
 
-When run on the **Arduino UNO Q**, the Qualcomm Linux side runs the model, and the STM32 microcontroller illuminates a golden marigold (*cempasúchil*) on the built-in 8×13 LED matrix for 2.6 seconds over Arduino Bridge RPC—a physical memory lantern for the moment of remembrance.
+---
+
+## Deploy to GitHub & Render (Free Hosting)
+
+Detailed instructions are available in **[DEPLOY.md](DEPLOY.md)**.
+
+### Quick Push to GitHub
+```bash
+git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO-NAME>.git
+git branch -M main
+git push -u origin main
+```
+
+### 1-Click Deploy on Render ([render.com](https://dashboard.render.com))
+1. In Render, click **"New +"** $\rightarrow$ **"Blueprint"**.
+2. Select your repository.
+3. Render reads [`render.yaml`](render.yaml) and provisions the service automatically!
+
+*(You can also deploy as a free **Static Site** on Render or **GitHub Pages**; all procedural audio, canvas fog, and local engines are built with zero external dependencies and work 100% in client-side static mode).*
 
 ---
 
@@ -23,35 +44,24 @@ Open **[http://localhost:7000](http://localhost:7000)** in your browser.
 The server automatically detects your environment:
 1. **On Arduino UNO Q:** Connects to Arduino App Lab local LLM Brick and sends Bridge RPC signals to the physical STM32 microcontroller.
 2. **On Desktop / Laptop with Ollama:** Queries your local open-weight model (e.g. `qwen2.5:3b`, `llama3.2`) at `http://127.0.0.1:11434`.
-3. **Standalone / Offline:** Uses the embedded local reflection engine with the authentic 8×13 LED matrix simulator—100% offline with zero cloud access, no API keys, and no network requests.
+3. **Standalone / Offline / Cloud:** Uses the embedded local engine with the authentic 8×13 LED matrix simulator and real-time Web Audio API synthesizer.
 
 ---
 
 ## Key Features
 
-- **Story Seeds:** Plant memories with title, person, year, and personal recollection.
-- **Local AI Reflection:** Generates tender 90–140 word reflections discovering connections across memories without impersonation.
-- **Interactive 8×13 LED Matrix Lantern:** Real-time simulation of the Arduino UNO Q's 104-LED display, featuring 3-bit grayscale brightness and the exact marigold bloom animation (`sketch.ino`).
+- **Procedural Web Audio Engine:** Synthesizes low-frequency dread drones, creeping heartbeats (syncable BPM), whispering formants, death bells, creaks, and jumpscare stingers natively in the browser with 0 external audio files.
+- **Dynamic Visuals:** Volumetric particle fog canvas, CRT scanlines, camera shockwaves, and flickering candlelight.
+- **Seance Terminal:** Interactive prompt and response with typewriter pacing.
+- **Interactive 8×13 LED Matrix:** Real-time simulation of the Arduino UNO Q's 104-LED matrix with 3-bit grayscale levels (Skull, Eye, Cross, and Marigold).
 - **Data Sovereignty & Privacy:** All memories stay in `localStorage`. One-click JSON export and import. No cookies, no accounts, no analytics, no external CDNs.
-- **Día de los Muertos & Halloween Theme:** Honors oral histories and memories carried forward in the spirit of remembrance.
-
----
-
-## Arduino UNO Q Hardware Setup
-
-The App Lab project lives in [`uno_q_app`](uno_q_app/README.md). The UNO Q 4 GB runs Debian and has Arduino App Lab pre-installed for standalone use; it also supports PC-connected development with the App Lab desktop app.
-
-1. Power the board with a 5 V / 3 A USB-C supply. For standalone mode, connect a monitor, keyboard, and mouse through a powered USB-C hub and connect to your private Wi-Fi.
-2. Open Arduino App Lab and import the `uno_q_app` folder. The app manifest includes the local LLM Brick and port 7000; its sketch uses Bridge RPC (`Arduino_RouterBridge.h`) to draw the marigold on the MCU's LED matrix.
-3. In the LLM Brick's **AI Models** tab, download a compact model offered for the UNO Q.
-4. Run the app and navigate to `http://<board-address>:7000`.
 
 ---
 
 ## Challenge Fit & Details
 
 - **Challenge:** Hacktoberfest Open-Source AI Challenge: Week 4 (“Ghost in the Machine”)
-- **Theme Interpretation:** A living remembrance garden honoring ancestors in the spirit of Día de los Muertos—replacing uncanny AI personas with genuine human storytelling and local open-weight models.
+- **Theme Interpretation:** A dual interpretation honoring Día de los Muertos and Halloween—blending eerie horror terminal folklore with heartfelt human remembrance.
 - **Open AI Tech:** Local open-weight models running on-device (Ollama / App Lab LLM Brick / embedded local engine).
 - **Partner Category:** Arduino Category (Arduino UNO Q Qualcomm QRB2210 Linux + STM32U585 MCU + 8×13 LED Matrix).
 - **Required Tag:** `hf26challenge`

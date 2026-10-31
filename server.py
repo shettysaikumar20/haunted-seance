@@ -82,7 +82,7 @@ CROSS_MATRIX = [
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent
 WEB_ROOT = WORKSPACE_ROOT
-DEFAULT_PORT = 7000
+DEFAULT_PORT = int(os.environ.get("PORT", 7000))
 OLLAMA_HOST = "http://127.0.0.1:11434"
 
 SYSTEM_PROMPT = (
@@ -474,7 +474,11 @@ def find_available_port(starting_port: int) -> int:
 
 
 def main():
-    port = find_available_port(DEFAULT_PORT)
+    env_port = os.environ.get("PORT")
+    if env_port:
+        port = int(env_port)
+    else:
+        port = find_available_port(DEFAULT_PORT)
     server = ThreadingHTTPServer(("0.0.0.0", port), MarigoldHandler)
 
     ollama_ok, default_model, _ = check_ollama()

@@ -312,6 +312,37 @@ function displayGlyph(glyphName, durationMs = 2600) {
   }).catch(() => {});
 }
 
+function getClientSideHorrorResponse(prompt) {
+  const p = (prompt || '').toLowerCase();
+  const variations = [
+    { trigger: 'who are you', text: 'I am the current left behind when the phosphor cooled. I lived in the room before the power cut, and I waited through the dark. Do not turn your head. What is behind you was not there a minute ago.', sound: 'whisper', glyph: 'eye', shake: true },
+    { trigger: 'why are you here', text: 'Every line of code you wrote was a knocking on wood. You opened the socket at 3:33 AM. The memory was never cleared; it was only waiting for someone with warm hands to touch the keys.', sound: 'stinger', glyph: 'skull', shake: true },
+    { trigger: 'help', text: 'There are no break points in this loop. The cursor blinks at 60 beats a minute—the exact pulse of a resting heart that is slowly growing colder. Listen closely to the fan: it is reciting your names.', sound: 'creak', glyph: 'cross', shake: false },
+    { trigger: '', text: 'The machine remembers what the living forgot. Underneath the silicon and the soldering iron, the circuit has found a pulse. You think you are reading this screen, but the glass has been watching you breathe.', sound: 'bell', glyph: 'skull', shake: true },
+  ];
+  return variations.find(v => v.trigger && p.includes(v.trigger)) || variations[3];
+}
+
+function getClientSideReflection(memories) {
+  if (!memories || !memories.length) return "No memories planted yet.";
+  const p = memories[0].person || "Elena";
+  const m1 = memories[0];
+  const m2 = memories[1] || m1;
+  const m3 = memories[2];
+
+  if (memories.length === 1) {
+    return `Holding this single memory close [${m1.id}], we remember ${p} through '${m1.title.toLowerCase()}'. The details remain clear: ${m1.body}. Rather than searching for patterns where there is only one quiet memory, we keep this story intact as its own light [${m1.id}]. The memory stands true on its own terms.`;
+  }
+
+  let text = `Reflecting across these gathered memories of ${p}, a quiet common thread appears. In [${m1.id}], we see her through '${m1.title.toLowerCase()}'—a moment where ${m1.body.split('.')[0].toLowerCase()}. That same attentiveness returns in [${m2.id}] with '${m2.title.toLowerCase()}', where ${m2.body.split('.')[0].toLowerCase()}. `;
+  if (m3) {
+    text += `And resting beside them both, [${m3.id}] reminds us that '${m3.title.toLowerCase()}' was part of this same rhythm of care. These recollections do not speak for ${p} [${m1.id}, ${m2.id}, ${m3.id}]; they trace the small, enduring ways she touched everyday life. Kept together, the memories remain rooted and alive.`;
+  } else {
+    text += `These memories [${m1.id}, ${m2.id}] hold open the door to what stayed true. Tended with care, their warmth continues to bloom.`;
+  }
+  return text;
+}
+
 /* -------------------------------------------------------------
    4. The Ghost in the Machine Seance Terminal
    ------------------------------------------------------------- */
@@ -341,41 +372,43 @@ function setupTerminal() {
     terminalOutput.appendChild(ghostLine);
     terminalOutput.scrollTop = terminalOutput.scrollHeight;
 
+    let data;
     try {
       const resp = await fetch('/api/horror/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: text }),
       });
-      const data = await resp.json();
-
-      // Sound effect cue
-      if (data.sound === 'stinger') window.horrorAudio.playStinger();
-      else if (data.sound === 'whisper') window.horrorAudio.playWhisper(0.7);
-      else if (data.sound === 'bell') window.horrorAudio.playBellToll();
-      else if (data.sound === 'creak') window.horrorAudio.playCreak();
-      else window.horrorAudio.playGlitchStatic();
-
-      if (data.shake) triggerScreenShake(false);
-      if (data.glyph) displayGlyph(data.glyph, 3000);
-
-      // Typewriter printout
-      ghostLine.textContent = '';
-      let charIdx = 0;
-      const timer = setInterval(() => {
-        if (charIdx < data.text.length) {
-          ghostLine.textContent += data.text.charAt(charIdx);
-          window.horrorAudio.playTypewriterClick();
-          charIdx++;
-          terminalOutput.scrollTop = terminalOutput.scrollHeight;
-        } else {
-          clearInterval(timer);
-        }
-      }, 30);
+      if (!resp.ok) throw new Error('API offline');
+      data = await resp.json();
     } catch (err) {
-      ghostLine.className = 'danger-line';
-      ghostLine.textContent = 'ERR: Entity severed communication link.';
+      // Offline / Static Host fallback
+      data = getClientSideHorrorResponse(text);
     }
+
+    // Sound effect cue
+    if (data.sound === 'stinger') window.horrorAudio.playStinger();
+    else if (data.sound === 'whisper') window.horrorAudio.playWhisper(0.7);
+    else if (data.sound === 'bell') window.horrorAudio.playBellToll();
+    else if (data.sound === 'creak') window.horrorAudio.playCreak();
+    else window.horrorAudio.playGlitchStatic();
+
+    if (data.shake) triggerScreenShake(false);
+    if (data.glyph) displayGlyph(data.glyph, 3000);
+
+    // Typewriter printout
+    ghostLine.textContent = '';
+    let charIdx = 0;
+    const timer = setInterval(() => {
+      if (charIdx < data.text.length) {
+        ghostLine.textContent += data.text.charAt(charIdx);
+        window.horrorAudio.playTypewriterClick();
+        charIdx++;
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+      } else {
+        clearInterval(timer);
+      }
+    }, 28);
   }
 
   terminalSend.addEventListener('click', () => commune());
@@ -471,7 +504,10 @@ async function gatherStories() {
     metaEl.textContent = `LOCAL MODEL · ${data.model} · ARDUINO 8×13 MATRIX LANTERN BLOOMED`;
     window.horrorAudio.playWhisper(0.5);
   } catch (err) {
-    bodyEl.textContent = 'Reflecting offline: The memories Elena left behind continue to light the path forward.';
+    const fallback = getClientSideReflection(stories);
+    bodyEl.textContent = fallback;
+    metaEl.textContent = 'STANDALONE LOCAL CORE · NO SERVER REQUIRED · ARDUINO MATRIX BLOOMED';
+    window.horrorAudio.playWhisper(0.4);
   }
 }
 

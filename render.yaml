@@ -1,0 +1,17 @@
+services:
+  # Option 1: Full Python Web Service (Runs server.py with full API & local engine)
+  - type: web
+    name: ghost-in-the-machine
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt || true"
+    startCommand: "python server.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  # Option 2: Pure Static Site (Free, global CDN, instant deploy)
+  - type: static
+    name: ghost-machine-static
+    plan: free
+    staticPublishPath: .
