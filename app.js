@@ -1,17 +1,52 @@
+/**
+ * Ghost in the Machine & Marigold Archive: Interactive Horror & Remembrance Client
+ */
+
+// 8x13 Grayscale Hardware Patterns (0 to 7)
+const PATTERNS = {
+  marigold: [
+    0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
+    0, 0, 0, 4, 5, 6, 7, 6, 5, 4, 0, 0, 0,
+    0, 0, 4, 5, 6, 6, 7, 6, 6, 5, 4, 0, 0,
+    0, 0, 0, 4, 5, 6, 7, 6, 5, 4, 0, 0, 0,
+    0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
+  ],
+  skull: [
+    0, 0, 0, 4, 6, 7, 7, 7, 6, 4, 0, 0, 0,
+    0, 0, 5, 7, 7, 7, 7, 7, 7, 7, 5, 0, 0,
+    0, 0, 6, 7, 0, 7, 7, 7, 0, 7, 6, 0, 0,
+    0, 0, 6, 7, 7, 7, 0, 7, 7, 7, 6, 0, 0,
+    0, 0, 0, 5, 7, 7, 7, 7, 7, 5, 0, 0, 0,
+    0, 0, 0, 0, 6, 7, 6, 7, 6, 0, 0, 0, 0,
+    0, 0, 0, 0, 5, 0, 5, 0, 5, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ],
+  eye: [
+    0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
+    0, 0, 2, 5, 7, 7, 7, 7, 7, 5, 2, 0, 0,
+    0, 4, 6, 7, 7, 1, 0, 1, 7, 7, 6, 4, 0,
+    6, 7, 7, 7, 2, 0, 0, 0, 2, 7, 7, 7, 6,
+    0, 4, 6, 7, 7, 1, 0, 1, 7, 7, 6, 4, 0,
+    0, 0, 2, 5, 7, 7, 7, 7, 7, 5, 2, 0, 0,
+    0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ],
+  cross: [
+    0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0,
+    0, 0, 5, 6, 7, 7, 7, 7, 7, 6, 5, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 4, 5, 4, 0, 0, 0, 0, 0,
+  ],
+};
+
 const STORAGE_KEY = 'marigold-archive-v1';
-
-// Marigold 8x13 Grayscale Pattern (from sketch.ino)
-const MARIGOLD_MATRIX = [
-  0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
-  0, 0, 0, 4, 5, 6, 7, 6, 5, 4, 0, 0, 0,
-  0, 0, 4, 5, 6, 6, 7, 6, 6, 5, 4, 0, 0,
-  0, 0, 0, 4, 5, 6, 7, 6, 5, 4, 0, 0, 0,
-  0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
-];
-
 const demoStories = [
   {
     id: 'M01',
@@ -43,19 +78,329 @@ const demoStories = [
 ];
 
 let stories = loadStories();
-let selectedStory = null;
 let toastTimer;
-let serverMode = false;
-let boardMode = false;
-let activeModelName = 'qwen2.5:3b';
+let droneActive = false;
+let heartbeatActive = false;
 let matrixTimer = null;
+let currentGlyph = 'marigold';
 
+/* -------------------------------------------------------------
+   1. Volumetric Fog & Particle Canvas System
+   ------------------------------------------------------------- */
+function initFogCanvas() {
+  const canvas = document.getElementById('fog-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let width = (canvas.width = window.innerWidth);
+  let height = (canvas.height = window.innerHeight);
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  const particles = [];
+  const particleCount = 45;
+
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      radius: Math.random() * 120 + 80,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.25,
+      alpha: Math.random() * 0.12 + 0.04,
+      isSpark: Math.random() > 0.8,
+    });
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, width, height);
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < -p.radius) p.x = width + p.radius;
+      if (p.x > width + p.radius) p.x = -p.radius;
+      if (p.y < -p.radius) p.y = height + p.radius;
+      if (p.y > height + p.radius) p.y = -p.radius;
+
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+      if (p.isSpark) {
+        grad.addColorStop(0, `rgba(255, 140, 20, ${p.alpha * 1.5})`);
+        grad.addColorStop(1, 'rgba(255, 80, 0, 0)');
+      } else {
+        grad.addColorStop(0, `rgba(50, 75, 50, ${p.alpha})`);
+        grad.addColorStop(1, 'rgba(10, 15, 10, 0)');
+      }
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    requestAnimationFrame(render);
+  }
+
+  render();
+}
+
+/* -------------------------------------------------------------
+   2. Web Audio UI & Soundscape Controls
+   ------------------------------------------------------------- */
+function setupAudioControls() {
+  const audio = window.horrorAudio;
+  const audioStateText = document.getElementById('audio-state-text');
+  const btnDrone = document.getElementById('btn-drone');
+  const btnHeartbeat = document.getElementById('btn-heartbeat');
+  const btnMute = document.getElementById('btn-mute');
+  const btnStinger = document.getElementById('btn-stinger');
+
+  function unlockAudio() {
+    audio.ensureContext();
+    if (audioStateText) audioStateText.textContent = 'AUDIO ENGINE: ACTIVE & SYNTHESIZING';
+  }
+  document.body.addEventListener('click', unlockAudio, { once: true });
+
+  btnDrone.addEventListener('click', () => {
+    unlockAudio();
+    droneActive = !droneActive;
+    if (droneActive) {
+      audio.startDreadDrone();
+      btnDrone.textContent = '✦ Dread Drone: ACTIVE';
+      btnDrone.classList.add('active');
+    } else {
+      audio.stopDreadDrone();
+      btnDrone.textContent = '✦ Dread Drone: OFF';
+      btnDrone.classList.remove('active');
+    }
+  });
+
+  btnHeartbeat.addEventListener('click', () => {
+    unlockAudio();
+    heartbeatActive = !heartbeatActive;
+    if (heartbeatActive) {
+      audio.startHeartbeat(72);
+      btnHeartbeat.textContent = '♥ Heartbeat: 72 BPM';
+      btnHeartbeat.classList.add('active');
+    } else {
+      audio.stopHeartbeat();
+      btnHeartbeat.textContent = '♥ Heartbeat: OFF';
+      btnHeartbeat.classList.remove('active');
+    }
+  });
+
+  btnStinger.addEventListener('click', triggerJumpscare);
+
+  btnMute.addEventListener('click', () => {
+    unlockAudio();
+    const isMuted = audio.toggleMute();
+    btnMute.textContent = isMuted ? '🔇 Audio: MUTED' : '🔊 Audio: ON';
+    btnMute.classList.toggle('active', isMuted);
+  });
+
+  // Soundpad Triggers
+  document.getElementById('pad-whisper').addEventListener('click', () => {
+    unlockAudio();
+    audio.playWhisper(0.7);
+    showToast('A spectral whisper echoes across the wires…');
+  });
+
+  document.getElementById('pad-bell').addEventListener('click', () => {
+    unlockAudio();
+    audio.playBellToll();
+    triggerScreenShake(false);
+  });
+
+  document.getElementById('pad-creak').addEventListener('click', () => {
+    unlockAudio();
+    audio.playCreak();
+  });
+
+  document.getElementById('pad-static').addEventListener('click', () => {
+    unlockAudio();
+    audio.playGlitchStatic(0.4, 0.6);
+    triggerScreenShake(true);
+  });
+}
+
+function triggerJumpscare() {
+  const audio = window.horrorAudio;
+  audio.ensureContext();
+  audio.playStinger();
+
+  // Screen shockwave
+  triggerScreenShake(true);
+
+  // Red flash overlay
+  const flash = document.getElementById('jumpscare-flash');
+  if (flash) {
+    flash.classList.add('active');
+    setTimeout(() => flash.classList.remove('active'), 250);
+  }
+
+  // Display Skull on Matrix
+  displayGlyph('skull', 3000);
+  showToast('SOMETHING IS IN THE ROOM.');
+}
+
+function triggerScreenShake(intense = false) {
+  const app = document.getElementById('app-shell');
+  if (!app) return;
+  const className = intense ? 'quake-intense' : 'quake-mild';
+  app.classList.remove('quake-mild', 'quake-intense');
+  void app.offsetWidth; // reflow
+  app.classList.add(className);
+  setTimeout(() => app.classList.remove(className), 800);
+}
+
+/* -------------------------------------------------------------
+   3. Arduino UNO Q 8x13 LED Matrix Display
+   ------------------------------------------------------------- */
+function initMatrix() {
+  const grid = document.getElementById('matrix-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < 104; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'led-dot';
+    dot.dataset.index = String(i);
+    dot.dataset.level = '0';
+    grid.appendChild(dot);
+  }
+  displayGlyph('marigold');
+}
+
+function displayGlyph(glyphName, durationMs = 2600) {
+  currentGlyph = glyphName;
+  const pattern = PATTERNS[glyphName] || PATTERNS.marigold;
+  const dots = document.querySelectorAll('.matrix-grid .led-dot');
+  const box = document.getElementById('matrix-box');
+  const titleEl = document.getElementById('matrix-title');
+  const stateEl = document.getElementById('matrix-state');
+
+  if (box) {
+    box.className = `matrix-box mode-${glyphName}`;
+  }
+
+  dots.forEach(dot => {
+    const idx = Number(dot.dataset.index);
+    dot.dataset.level = String(pattern[idx] || 0);
+  });
+
+  const titles = {
+    marigold: 'GLYPH: MARIGOLD LANTERN',
+    skull: 'GLYPH: PHANTOM SKULL',
+    eye: 'GLYPH: WATCHING EYE',
+    cross: 'GLYPH: THE CROSS',
+  };
+  if (titleEl) titleEl.textContent = titles[glyphName] || 'GLYPH: ACTIVE';
+  if (stateEl) stateEl.textContent = `PULSING (${(durationMs / 1000).toFixed(1)}s)`;
+
+  clearTimeout(matrixTimer);
+  matrixTimer = setTimeout(() => {
+    if (stateEl) stateEl.textContent = 'STANDBY';
+  }, durationMs);
+
+  // Send to server bridge
+  fetch('/api/matrix/display', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pattern: glyphName }),
+  }).catch(() => {});
+}
+
+/* -------------------------------------------------------------
+   4. The Ghost in the Machine Seance Terminal
+   ------------------------------------------------------------- */
+function setupTerminal() {
+  const terminalInput = document.getElementById('terminal-input');
+  const terminalSend = document.getElementById('terminal-send');
+  const terminalOutput = document.getElementById('terminal-output');
+  const btnManifest = document.getElementById('btn-manifest');
+
+  async function commune(promptText) {
+    const text = promptText || terminalInput.value.trim();
+    if (!text) return;
+    terminalInput.value = '';
+
+    window.horrorAudio.ensureContext();
+    window.horrorAudio.playTypewriterClick();
+
+    // Append user's whisper
+    const userLine = document.createElement('div');
+    userLine.textContent = `> ${text}`;
+    terminalOutput.appendChild(userLine);
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+    const ghostLine = document.createElement('div');
+    ghostLine.className = 'ghost-line';
+    ghostLine.textContent = 'The machine shudders and listens…';
+    terminalOutput.appendChild(ghostLine);
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+    try {
+      const resp = await fetch('/api/horror/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: text }),
+      });
+      const data = await resp.json();
+
+      // Sound effect cue
+      if (data.sound === 'stinger') window.horrorAudio.playStinger();
+      else if (data.sound === 'whisper') window.horrorAudio.playWhisper(0.7);
+      else if (data.sound === 'bell') window.horrorAudio.playBellToll();
+      else if (data.sound === 'creak') window.horrorAudio.playCreak();
+      else window.horrorAudio.playGlitchStatic();
+
+      if (data.shake) triggerScreenShake(false);
+      if (data.glyph) displayGlyph(data.glyph, 3000);
+
+      // Typewriter printout
+      ghostLine.textContent = '';
+      let charIdx = 0;
+      const timer = setInterval(() => {
+        if (charIdx < data.text.length) {
+          ghostLine.textContent += data.text.charAt(charIdx);
+          window.horrorAudio.playTypewriterClick();
+          charIdx++;
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        } else {
+          clearInterval(timer);
+        }
+      }, 30);
+    } catch (err) {
+      ghostLine.className = 'danger-line';
+      ghostLine.textContent = 'ERR: Entity severed communication link.';
+    }
+  }
+
+  terminalSend.addEventListener('click', () => commune());
+  terminalInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commune();
+  });
+
+  if (btnManifest) {
+    btnManifest.addEventListener('click', () => {
+      triggerJumpscare();
+      commune('Why did you wake up?');
+      document.getElementById('terminal-section').scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+}
+
+/* -------------------------------------------------------------
+   5. Remembrance Garden & Stories Management
+   ------------------------------------------------------------- */
 function loadStories() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
-  } catch (error) {
-    console.warn('Could not read the local archive.', error);
+  } catch (e) {
+    console.warn(e);
   }
   return [...demoStories];
 }
@@ -63,434 +408,191 @@ function loadStories() {
 function saveStories() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stories));
-  } catch (error) {
-    showToast('Browser storage full. Export a copy before closing.');
+  } catch (e) {
+    showToast('Storage quota exceeded.');
   }
-}
-
-function safe(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[char]);
-}
-
-function storyCountLabel(n) {
-  return `${String(n).padStart(2, '0')} ${n === 1 ? 'story' : 'stories'}`;
 }
 
 function renderStories() {
   const grid = document.getElementById('memory-grid');
-  const count = stories.length;
-  document.getElementById('story-total').textContent = storyCountLabel(count);
-  document.getElementById('nav-count').textContent = String(count).padStart(2, '0');
+  const badge = document.getElementById('story-count-badge');
+  if (!grid) return;
   grid.innerHTML = '';
+  if (badge) badge.textContent = `${stories.length} ${stories.length === 1 ? 'memory' : 'memories'}`;
 
-  if (!count) {
-    grid.innerHTML = '<div class="empty-state">The garden is waiting for its first story. Start with one small detail you want to keep.</div>';
-    return;
-  }
-
-  for (const story of [...stories].reverse()) {
+  stories.forEach(s => {
     const card = document.createElement('article');
     card.className = 'memory-card';
-    card.tabIndex = 0;
-    card.setAttribute('role', 'button');
-    card.setAttribute('aria-label', `Open story: ${story.title}`);
     card.innerHTML = `
       <div class="memory-top">
-        <span class="memory-kind">${story.demo ? 'A MEMORY, KEPT' : 'A STORY, PLANTED'}</span>
-        <span class="memory-sprig">✳</span>
+        <span>${s.id}</span>
+        <span>${s.demo ? 'ANCIENT' : 'PLANTED'}</span>
       </div>
-      <h3>${safe(story.title)}</h3>
-      <p>${safe(story.person)}${story.year ? ` · ${safe(story.year)}` : ''}</p>
+      <h3>${escapeHtml(s.title)}</h3>
+      <p>${escapeHtml(s.person)}${s.year ? ` · ${escapeHtml(s.year)}` : ''}</p>
       <div class="memory-footer">
-        <span>${safe(story.id)} &nbsp;·&nbsp; IN YOUR ARCHIVE</span>
-        <span>READ STORY ↗</span>
+        <span>${escapeHtml(s.body.slice(0, 60))}…</span>
+        <span style="color:#55ef8e;">READ ↗</span>
       </div>
     `;
-    card.addEventListener('click', () => openStory(story.id));
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openStory(story.id);
-      }
+    card.addEventListener('click', () => {
+      window.horrorAudio.playTypewriterClick();
+      alert(`[${s.id}] About ${s.person} (${s.year || ''})\n\n${s.body}`);
     });
-    grid.append(card);
-  }
-}
-
-function showToast(message) {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
-}
-
-/* Arduino UNO Q 8x13 LED Matrix Simulation */
-function initMatrixGrids() {
-  const mainGrid = document.getElementById('matrix-grid');
-  const dialogGrid = document.getElementById('dialog-matrix-grid');
-  mainGrid.innerHTML = '';
-  if (dialogGrid) dialogGrid.innerHTML = '';
-
-  for (let i = 0; i < 104; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'led-dot';
-    dot.dataset.index = String(i);
-    dot.dataset.level = '0';
-    mainGrid.appendChild(dot);
-
-    if (dialogGrid) {
-      const smallDot = document.createElement('div');
-      smallDot.className = 'led-dot';
-      smallDot.dataset.index = String(i);
-      smallDot.dataset.level = '0';
-      dialogGrid.appendChild(smallDot);
-    }
-  }
-}
-
-function pulseMatrix(durationMs = 2600) {
-  const dots = document.querySelectorAll('.matrix-grid .led-dot, .matrix-grid-small .led-dot');
-  const bridgeStatus = document.getElementById('bridge-status');
-  const matrixTimerLabel = document.getElementById('matrix-timer');
-
-  dots.forEach(dot => {
-    const idx = Number(dot.dataset.index);
-    const level = MARIGOLD_MATRIX[idx] || 0;
-    dot.dataset.level = String(level);
+    grid.appendChild(card);
   });
-
-  if (bridgeStatus) bridgeStatus.textContent = 'BRIDGE RPC: MARIGOLD BLOOMING';
-  if (matrixTimerLabel) matrixTimerLabel.textContent = `ACTIVE (2.6s LANTERN)`;
-
-  clearTimeout(matrixTimer);
-  matrixTimer = setTimeout(() => {
-    dots.forEach(dot => {
-      dot.dataset.level = '0';
-    });
-    if (bridgeStatus) bridgeStatus.textContent = 'BRIDGE RPC: READY';
-    if (matrixTimerLabel) matrixTimerLabel.textContent = 'STANDBY';
-  }, durationMs);
-}
-
-async function detectBoardRuntime() {
-  try {
-    const response = await fetch('/api/status', { cache: 'no-store' });
-    if (!response.ok) throw new Error('No server API');
-    const status = await response.json();
-    serverMode = true;
-    boardMode = Boolean(status.board);
-    activeModelName = status.model || 'Local Model';
-
-    const hwTitle = document.getElementById('hw-title');
-    const hwDesc = document.getElementById('hw-desc');
-    const statusEl = document.getElementById('ollama-status');
-    const modelInput = document.getElementById('model-name');
-
-    if (boardMode) {
-      hwTitle.textContent = 'Arduino UNO Q (Board)';
-      hwDesc.textContent = 'Qualcomm QRB2210 + STM32U585 MCU Bridge';
-      statusEl.textContent = `UNO Q · ${activeModelName} · on-device`;
-      document.querySelector('.local-pill').innerHTML = '<i></i> ARDUINO UNO Q · ON-DEVICE';
-      modelInput.value = 'App Lab local LLM';
-      modelInput.readOnly = true;
-    } else {
-      hwTitle.textContent = 'Arduino UNO Q (Simulator)';
-      hwDesc.textContent = status.ollama
-        ? 'Ollama local inference + Bridge simulation'
-        : 'Embedded local engine + Bridge simulation';
-      statusEl.textContent = `Local Engine · ${activeModelName}`;
-      modelInput.value = status.available_models && status.available_models.length ? status.available_models[0] : 'qwen2.5:3b';
-    }
-  } catch {
-    serverMode = false;
-    document.getElementById('hw-title').textContent = 'Offline Browser Mode';
-    document.getElementById('hw-desc').textContent = 'Browser localStorage + Virtual Matrix';
-    document.getElementById('ollama-status').textContent = 'Local Ollama / Embedded engine';
-  }
-}
-
-function openStory(id) {
-  selectedStory = stories.find(s => s.id === id);
-  if (!selectedStory) return;
-  document.getElementById('view-person').textContent = `A STORY ABOUT ${selectedStory.person.toUpperCase()}`;
-  document.getElementById('view-title').textContent = selectedStory.title;
-  document.getElementById('view-date').textContent = `${selectedStory.year || 'A moment remembered'} · SOURCE ${selectedStory.id}`;
-  document.getElementById('view-body').textContent = selectedStory.body;
-  document.getElementById('story-view-dialog').showModal();
-}
-
-function downloadArchive() {
-  const blob = new Blob(
-    [
-      JSON.stringify(
-        {
-          project: 'Marigold Archive',
-          theme: 'Ghost in the Machine (Hacktoberfest 2026)',
-          exportedAt: new Date().toISOString(),
-          stories,
-        },
-        null,
-        2
-      ),
-    ],
-    { type: 'application/json' }
-  );
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'marigold-archive.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Archive downloaded to this device.');
-}
-
-function importArchive(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      const importedStories = Array.isArray(data.stories) ? data.stories : (Array.isArray(data) ? data : null);
-      if (!importedStories || !importedStories.length) {
-        showToast('Invalid archive file.');
-        return;
-      }
-      stories = importedStories.map((s, idx) => ({
-        id: s.id || `M${String(idx + 1).padStart(2, '0')}`,
-        title: String(s.title || 'Untitled Memory').slice(0, 100),
-        person: String(s.person || 'Elena').slice(0, 80),
-        year: String(s.year || '').slice(0, 40),
-        body: String(s.body || '').slice(0, 1400),
-        createdAt: s.createdAt || new Date().toISOString(),
-        demo: Boolean(s.demo),
-      }));
-      saveStories();
-      renderStories();
-      showToast(`Imported ${stories.length} stories into your garden.`);
-    } catch (err) {
-      showToast('Could not parse JSON archive.');
-    }
-  };
-  reader.readAsText(file);
-}
-
-function closeDialog(id) {
-  document.getElementById(id).close();
-}
-
-// Client-side fallback reflection generator
-function clientSideReflection(memories) {
-  const p = memories[0].person || 'Elena';
-  const m1 = memories[0];
-  const m2 = memories[1] || m1;
-  const m3 = memories[2];
-
-  if (memories.length === 1) {
-    return `Holding this single story close [${m1.id}], we remember ${p} through '${m1.title.toLowerCase()}'. The memory stands clearly: ${m1.body.rstrip ? m1.body.rstrip('.') : m1.body}. Without forcing patterns where only one quiet moment was offered, we preserve this recollection exactly as it was shared [${m1.id}]. The living warmth remains intact.`;
-  }
-
-  let text = `Reflecting across these gathered moments of ${p}, a quiet common thread appears. In [${m1.id}], we see her through '${m1.title.toLowerCase()}', where ${m1.body.split('.')[0].toLowerCase()}. That same attentiveness returns in [${m2.id}] with '${m2.title.toLowerCase()}', where ${m2.body.split('.')[0].toLowerCase()}. `;
-  if (m3) {
-    text += `And resting beside them both, [${m3.id}] reminds us that '${m3.title.toLowerCase()}' was part of this same rhythm of care. These recollections do not speak for ${p} [${m1.id}, ${m2.id}, ${m3.id}]; they simply illuminate the small, enduring ways she touched everyday life.`;
-  } else {
-    text += `These memories [${m1.id}, ${m2.id}] hold open the door to what stayed true. Tended with care, their warmth continues to bloom.`;
-  }
-  return text;
 }
 
 async function gatherStories() {
   if (!stories.length) {
-    showToast('Plant at least one story before gathering them.');
+    showToast('Please plant at least one memory seed.');
     return;
   }
-  const button = document.getElementById('create-lantern');
-  const status = document.getElementById('ollama-status');
-  const oldLabel = button.innerHTML;
-  button.disabled = true;
-  button.innerHTML = '<span class="loading"></span>Gathering the stories…';
-  status.textContent = 'Open-weight model running…';
+  window.horrorAudio.ensureContext();
+  window.horrorAudio.playBellToll();
+  displayGlyph('marigold', 3500);
 
-  const model = document.getElementById('model-name').value.trim() || 'qwen2.5:3b';
+  const dialog = document.getElementById('reflection-dialog');
+  const bodyEl = document.getElementById('reflection-body');
+  const metaEl = document.getElementById('reflection-meta');
+
+  bodyEl.textContent = 'Listening to the memories in the dark…';
+  metaEl.textContent = 'ARDUINO UNO Q · BRIDGE RPC PULSED';
+  dialog.showModal();
 
   try {
-    let reflectionText = '';
-    let modelName = model;
+    const resp = await fetch('/api/reflection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stories }),
+    });
+    const data = await resp.json();
+    bodyEl.textContent = data.reflection;
+    metaEl.textContent = `LOCAL MODEL · ${data.model} · ARDUINO 8×13 MATRIX LANTERN BLOOMED`;
+    window.horrorAudio.playWhisper(0.5);
+  } catch (err) {
+    bodyEl.textContent = 'Reflecting offline: The memories Elena left behind continue to light the path forward.';
+  }
+}
 
-    if (serverMode) {
-      const response = await fetch('/api/reflection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stories, model }),
-      });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        throw new Error(detail.error || `Server returned ${response.status}`);
-      }
-      const data = await response.json();
-      reflectionText = data.reflection;
-      modelName = data.model || model;
-    } else {
-      // Try direct local Ollama endpoint
-      try {
-        const sourceText = stories.map(s => `[${s.id}] About ${s.person}${s.year ? ` (${s.year})` : ''} — ${s.title}\n${s.body}`).join('\n\n');
-        const prompt = `You are a careful editor helping someone make a remembrance. Write a short, tender reflection (90–140 words) that notices a real connection across the supplied memories. Do not impersonate or speak as the person who died. Do not invent facts, events, feelings, relationships, quotations, or sensory details. Every specific detail must come from the source memories. Include source IDs in square brackets next to the detail they support, for example [M01]. Plain text only.\n\nMEMORIES:\n${sourceText}`;
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
 
-        const olResp = await fetch('http://localhost:11434/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            stream: false,
-            messages: [{ role: 'user', content: prompt }],
-            options: { temperature: 0.35 },
-          }),
-        });
-        if (olResp.ok) {
-          const olData = await olResp.json();
-          reflectionText = olData.message?.content?.trim();
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+/* -------------------------------------------------------------
+   6. App Initialization & Event Wiring
+   ------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', () => {
+  initFogCanvas();
+  setupAudioControls();
+  initMatrix();
+  setupTerminal();
+  renderStories();
+
+  // Glyph Switchers
+  document.querySelectorAll('.glyph-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.horrorAudio.playTypewriterClick();
+      const g = btn.dataset.glyph;
+      displayGlyph(g, 3000);
+    });
+  });
+
+  // Modal Triggers
+  const storyDialog = document.getElementById('story-dialog');
+  const openAdd = document.getElementById('open-add-story');
+  if (openAdd) openAdd.addEventListener('click', () => storyDialog.showModal());
+
+  document.getElementById('close-add-modal').addEventListener('click', () => storyDialog.close());
+  document.getElementById('cancel-add-modal').addEventListener('click', () => storyDialog.close());
+
+  document.getElementById('story-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const title = form.get('title');
+    const person = form.get('person');
+    const year = form.get('year');
+    const body = form.get('body');
+    if (!title || !person || !body) return;
+
+    stories.push({
+      id: `M${String(stories.length + 1).padStart(2, '0')}`,
+      title: String(title),
+      person: String(person),
+      year: String(year || ''),
+      body: String(body),
+      createdAt: new Date().toISOString(),
+      demo: false,
+    });
+    saveStories();
+    renderStories();
+    e.currentTarget.reset();
+    storyDialog.close();
+    window.horrorAudio.playTypewriterClick();
+    showToast('Your memory has taken root in the soil.');
+  });
+
+  document.getElementById('btn-gather-hero').addEventListener('click', gatherStories);
+  document.getElementById('close-reflection-modal').addEventListener('click', () => {
+    document.getElementById('reflection-dialog').close();
+  });
+  document.getElementById('done-reflection-modal').addEventListener('click', () => {
+    document.getElementById('reflection-dialog').close();
+  });
+
+  // Import / Export
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify({ stories }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ghost-machine-archive.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Archive downloaded to your machine.');
+  });
+
+  const importFile = document.getElementById('import-file');
+  document.getElementById('import-btn').addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (Array.isArray(data.stories)) {
+            stories = data.stories;
+            saveStories();
+            renderStories();
+            showToast('Archive restored.');
+          }
+        } catch {
+          showToast('Invalid archive file.');
         }
-      } catch {
-        // Fallback to client-side engine
-        reflectionText = clientSideReflection(stories);
-        modelName = 'Marigold Client-Side Engine (Local)';
-      }
+      };
+      reader.readAsText(e.target.files[0]);
     }
-
-    if (!reflectionText) {
-      reflectionText = clientSideReflection(stories);
-    }
-
-    // Pulse the 8x13 LED Matrix Lantern
-    pulseMatrix(2600);
-
-    showReflection(reflectionText, modelName);
-    status.textContent = `Ready · ${modelName} · on-device`;
-  } catch (error) {
-    console.error('Reflection error:', error);
-    // Graceful offline fallback
-    const fallbackText = clientSideReflection(stories);
-    pulseMatrix(2600);
-    showReflection(fallbackText, 'Marigold Local Engine (Offline)');
-    status.textContent = 'Local offline reflection ready';
-  } finally {
-    button.disabled = false;
-    button.innerHTML = oldLabel;
-  }
-}
-
-function showReflection(reflection, model) {
-  document.getElementById('result-title').innerHTML = 'The things<br /><em>that stayed.</em>';
-  const output = document.getElementById('result-content');
-  const knownIds = new Set(stories.map(s => s.id));
-  const citations = [...new Set([...reflection.matchAll(/\[(M\d+)\]/g)].map(m => m[1]).filter(id => knownIds.has(id)))];
-
-  // Highlight citation tags with styled badge
-  const formattedHtml = safe(reflection).replace(/\[(M\d+)\]/g, '<span class="citation-pill">[$1]</span>');
-
-  output.innerHTML = `
-    <div>${formattedHtml}</div>
-    <div class="sources">
-      SOURCES IN THIS GATHERING<br />
-      ${stories.map(s => `${safe(s.id)} · ${safe(s.title)}${citations.includes(s.id) ? ' &nbsp;✓ Cited' : ''}`).join('<br />')}
-      <br /><br />
-      HARDWARE / MODEL · ${safe(model)} · ARDUINO 8×13 LED PULSED
-    </div>
-  `;
-
-  document.getElementById('lantern-dialog').showModal();
-}
-
-/* Event Listeners */
-document.getElementById('open-add').addEventListener('click', () => document.getElementById('story-dialog').showModal());
-document.getElementById('open-add-2').addEventListener('click', () => document.getElementById('story-dialog').showModal());
-
-document.getElementById('story-form').addEventListener('submit', event => {
-  event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const body = String(form.get('body') || '').trim();
-  const title = String(form.get('title') || '').trim();
-  const person = String(form.get('person') || '').trim();
-  if (!body || !title || !person) return;
-
-  const next = stories.length ? Math.max(...stories.map(s => Number(s.id.slice(1)) || 0)) + 1 : 1;
-  stories.push({
-    id: `M${String(next).padStart(2, '0')}`,
-    title,
-    person,
-    year: String(form.get('year') || '').trim(),
-    body,
-    createdAt: new Date().toISOString(),
-    demo: false,
   });
 
-  saveStories();
-  renderStories();
-  event.currentTarget.reset();
-  closeDialog('story-dialog');
-  showToast('Your story has taken root.');
-});
-
-document.getElementById('story-form').querySelectorAll('[value="cancel"]').forEach(btn => {
-  btn.addEventListener('click', () => closeDialog('story-dialog'));
-});
-
-document.getElementById('export-btn').addEventListener('click', downloadArchive);
-
-const importFile = document.getElementById('import-file');
-document.getElementById('import-btn').addEventListener('click', () => importFile.click());
-importFile.addEventListener('change', e => {
-  if (e.target.files && e.target.files[0]) {
-    importArchive(e.target.files[0]);
-    e.target.value = '';
-  }
-});
-
-document.getElementById('delete-story').addEventListener('click', () => {
-  if (!selectedStory) return;
-  stories = stories.filter(s => s.id !== selectedStory.id);
-  saveStories();
-  renderStories();
-  closeDialog('story-view-dialog');
-  showToast('Story removed from this browser.');
-});
-
-document.getElementById('close-story-view').addEventListener('click', () => closeDialog('story-view-dialog'));
-document.getElementById('close-story-btn').addEventListener('click', () => closeDialog('story-view-dialog'));
-document.getElementById('close-result').addEventListener('click', () => closeDialog('lantern-dialog'));
-document.getElementById('close-result-btn').addEventListener('click', () => closeDialog('lantern-dialog'));
-
-document.getElementById('create-lantern').addEventListener('click', gatherStories);
-document.getElementById('open-lantern').addEventListener('click', () => {
-  document.getElementById('lantern-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(gatherStories, 350);
-});
-
-document.getElementById('test-matrix-btn').addEventListener('click', () => {
-  pulseMatrix(2600);
-  if (serverMode) {
-    fetch('/api/lantern/test', { method: 'POST' }).catch(() => {});
-  }
-  showToast('Arduino 8×13 LED Matrix lantern pulsed.');
-});
-
-document.querySelectorAll('.nav-item').forEach(button => {
-  button.addEventListener('click', () => {
-    const view = button.dataset.view;
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item === button));
-    if (view === 'garden') document.getElementById('top').scrollIntoView({ behavior: 'smooth' });
-    if (view === 'stories') document.getElementById('memory-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (view === 'lantern') document.getElementById('lantern-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (view === 'about') showToast('No account, no cloud, no telemetry. Stories stay exclusively in this browser.');
+  // View Navigation
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.dataset.view;
+      if (view === 'hero') document.getElementById('hero-section').scrollIntoView({ behavior: 'smooth' });
+      if (view === 'terminal') document.getElementById('terminal-section').scrollIntoView({ behavior: 'smooth' });
+      if (view === 'matrix') document.getElementById('matrix-section').scrollIntoView({ behavior: 'smooth' });
+      if (view === 'stories') document.getElementById('stories-section').scrollIntoView({ behavior: 'smooth' });
+    });
   });
 });
-
-// Sync files to uno_q_app/web
-initMatrixGrids();
-renderStories();
-detectBoardRuntime();

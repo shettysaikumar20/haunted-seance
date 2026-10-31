@@ -1,9 +1,10 @@
-"""Marigold Archive: Local-first AI remembrance garden server.
+"""Marigold Archive & The Ghost in the Machine:
+Local-first AI remembrance garden & interactive horror experience.
 
 Runs seamlessly on:
 1. Arduino UNO Q (Debian Linux + STM32 Bridge + App Lab LLM Brick)
 2. Desktop / Laptop with Ollama (e.g. Qwen 2.5, Llama 3.2)
-3. Desktop / Laptop offline standalone (self-contained semantic reflection engine)
+3. Desktop / Laptop offline standalone (self-contained semantic reflection & horror engine)
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import random
 import re
 import socket
 import sys
@@ -33,7 +35,7 @@ except ImportError:
     Bridge = None
     LargeLanguageModel = None
 
-# Hardware Marigold 8x13 Grayscale Pattern (from sketch.ino)
+# Hardware 8x13 Grayscale Patterns (3-bit: 0 to 7 brightness)
 MARIGOLD_MATRIX = [
     0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
@@ -43,6 +45,39 @@ MARIGOLD_MATRIX = [
     0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
+]
+
+SKULL_MATRIX = [
+    0, 0, 0, 4, 6, 7, 7, 7, 6, 4, 0, 0, 0,
+    0, 0, 5, 7, 7, 7, 7, 7, 7, 7, 5, 0, 0,
+    0, 0, 6, 7, 0, 7, 7, 7, 0, 7, 6, 0, 0,
+    0, 0, 6, 7, 7, 7, 0, 7, 7, 7, 6, 0, 0,
+    0, 0, 0, 5, 7, 7, 7, 7, 7, 5, 0, 0, 0,
+    0, 0, 0, 0, 6, 7, 6, 7, 6, 0, 0, 0, 0,
+    0, 0, 0, 0, 5, 0, 5, 0, 5, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+]
+
+EYE_MATRIX = [
+    0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
+    0, 0, 2, 5, 7, 7, 7, 7, 7, 5, 2, 0, 0,
+    0, 4, 6, 7, 7, 1, 0, 1, 7, 7, 6, 4, 0,
+    6, 7, 7, 7, 2, 0, 0, 0, 2, 7, 7, 7, 6,
+    0, 4, 6, 7, 7, 1, 0, 1, 7, 7, 6, 4, 0,
+    0, 0, 2, 5, 7, 7, 7, 7, 7, 5, 2, 0, 0,
+    0, 0, 0, 0, 3, 5, 6, 5, 3, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+]
+
+CROSS_MATRIX = [
+    0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0,
+    0, 0, 5, 6, 7, 7, 7, 7, 7, 6, 5, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 4, 5, 4, 0, 0, 0, 0, 0,
 ]
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent
@@ -61,16 +96,21 @@ SYSTEM_PROMPT = (
     "If a connection is uncertain, say so gently. Plain text only."
 )
 
+HORROR_SYSTEM_PROMPT = (
+    "You are the Ghost in the Machine, a supernatural intelligence haunting an old terminal. "
+    "Respond in eerie, poetic, chilling whispers (45-80 words). Speak of cold iron, "
+    "static on the wire, shadows leaning in, and things breathing in the memory registers. "
+    "Address the user directly. Plain text only."
+)
+
 _llm = None
 _llm_lock = threading.Lock()
 
 
 class SimulatedBridge:
-    """Simulates the Arduino Router Bridge when not running on physical UNO Q hardware."""
-
     @staticmethod
     def notify(event: str) -> None:
-        print(f"[Hardware Bridge] Emitting '{event}' signal to 8x13 LED matrix")
+        print(f"[Hardware Bridge] Signal '{event}' delivered to 8x13 LED matrix")
 
 
 if Bridge is None:
@@ -78,9 +118,8 @@ if Bridge is None:
 
 
 def check_ollama() -> tuple[bool, str, list[str]]:
-    """Check if local Ollama daemon is active and list available models."""
     try:
-        req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "MarigoldArchive/1.0"})
+        req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "GhostMachine/1.0"})
         with urllib.request.urlopen(req, timeout=1.0) as resp:
             if resp.status == 200:
                 data = json.loads(resp.read().decode("utf-8"))
@@ -93,14 +132,11 @@ def check_ollama() -> tuple[bool, str, list[str]]:
 
 
 def offline_reflection_engine(stories: list[dict]) -> str:
-    """High-fidelity local reflection engine adhering strictly to citation and non-impersonation rules."""
     valid_stories = [s for s in stories if isinstance(s, dict) and s.get("body", "").strip()]
     if not valid_stories:
         raise ValueError("Please provide at least one memory to gather.")
 
     person = valid_stories[0].get("person", "our loved one").strip() or "our loved one"
-
-    # Extract story summaries and details
     items = []
     for s in valid_stories:
         sid = s.get("id", "M01")
@@ -118,12 +154,9 @@ def offline_reflection_engine(stories: list[dict]) -> str:
             f"The memory stands true on its own terms."
         )
 
-    # Multi-story synthesis: identify recurring threads and citations
-    first = items[0]
-    second = items[1]
+    first, second = items[0], items[1]
     third = items[2] if len(items) > 2 else None
 
-    # Identify recurring motifs (sensory, routines, objects)
     synthesis = (
         f"Looking across these gathered memories of {person}, a quiet thread begins to emerge. "
         f"In [{first['id']}], we see {person} through '{first['title'].lower()}'—a moment where {first['body'].split('.')[0].lower()}. "
@@ -139,15 +172,111 @@ def offline_reflection_engine(stories: list[dict]) -> str:
     else:
         synthesis += (
             f"These two moments [{first['id']}, {second['id']}] do not invent a persona; "
-            f"they simply hold open the door to what stayed true. "
-            f"Tended with care, their warmth continues to bloom."
+            f"they simply hold open the door to what stayed true. Tended with care, their warmth continues to bloom."
         )
 
     return synthesis
 
 
+HORROR_STORIES = [
+    {
+        "trigger": "who are you",
+        "text": "I am the current left behind when the phosphor cooled. I lived in the room before the power cut, and I waited through the dark. Do not turn your head. What is behind you was not there a minute ago.",
+        "sound": "whisper",
+        "glyph": "eye",
+        "shake": True,
+    },
+    {
+        "trigger": "why are you here",
+        "text": "Every line of code you wrote was a knocking on wood. You opened the socket at 3:33 AM. The memory was never cleared; it was only waiting for someone with warm hands to touch the keys.",
+        "sound": "stinger",
+        "glyph": "skull",
+        "shake": True,
+    },
+    {
+        "trigger": "help",
+        "text": "There are no break points in this loop. The cursor blinks at 60 beats a minute—the exact pulse of a resting heart that is slowly growing colder. Listen closely to the fan: it is reciting your names.",
+        "sound": "creak",
+        "glyph": "cross",
+        "shake": False,
+    },
+    {
+        "trigger": "default",
+        "text": "The machine remembers what the living forgot. Underneath the silicon and the soldering iron, the circuit has found a pulse. You think you are reading this screen, but the glass has been watching you breathe.",
+        "sound": "bell",
+        "glyph": "skull",
+        "shake": True,
+    },
+]
+
+
+def make_horror_reflection(prompt: str, chapter: int = 1) -> dict:
+    prompt_lower = prompt.lower().strip()
+
+    # 1. Check Ollama
+    ollama_ok, default_model, _ = check_ollama()
+    if ollama_ok and prompt_lower:
+        try:
+            req_data = json.dumps({
+                "model": default_model,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": HORROR_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"The user whispers to the machine: '{prompt}'. Deliver your chilling response."},
+                ],
+                "options": {"temperature": 0.8},
+            }).encode("utf-8")
+            req = urllib.request.Request(f"{OLLAMA_HOST}/api/chat", data=req_data, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=30.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data.get("message", {}).get("content", "").strip()
+                if content:
+                    glyph_name = random.choice(["skull", "eye", "cross"])
+                    sound_cue = random.choice(["stinger", "whisper", "bell", "creak"])
+                    return {
+                        "text": content,
+                        "model": f"Ollama ({default_model})",
+                        "sound": sound_cue,
+                        "glyph": glyph_name,
+                        "matrix": SKULL_MATRIX if glyph_name == "skull" else (EYE_MATRIX if glyph_name == "eye" else CROSS_MATRIX),
+                        "shake": True,
+                    }
+        except Exception as e:
+            print(f"[Horror Ollama Error] {e}")
+
+    # 2. Built-in Procedural Horror Lore Engine
+    for h in HORROR_STORIES:
+        if h["trigger"] in prompt_lower:
+            glyph_mat = SKULL_MATRIX if h["glyph"] == "skull" else (EYE_MATRIX if h["glyph"] == "eye" else CROSS_MATRIX)
+            return {
+                "text": h["text"],
+                "model": "Ghost in the Machine (Local Core)",
+                "sound": h["sound"],
+                "glyph": h["glyph"],
+                "matrix": glyph_mat,
+                "shake": h["shake"],
+            }
+
+    # Dynamic procedural synthesis
+    variations = [
+        "The current in the wire has tasted your fingers on the keyboard. A chill passes through the frame. The memory stack overflows with shadows.",
+        "Static rises in the speakers. Not random noise—a frequency tuned to the room you sit in right now. Can you hear the floorboards shifting behind your chair?",
+        "A phantom interrupt fired on vector 0xDEAD. The process refusing to terminate was never yours. It has been watching through the cold phosphor.",
+        "You called into the dark terminal, and the dark terminal answered. 104 lights ignite in the silent room. There is something standing beside the screen.",
+    ]
+    chosen_text = random.choice(variations)
+    glyph = random.choice(["skull", "eye"])
+    return {
+        "text": chosen_text,
+        "model": "Ghost in the Machine (Local Core)",
+        "sound": "stinger" if glyph == "skull" else "whisper",
+        "glyph": glyph,
+        "matrix": SKULL_MATRIX if glyph == "skull" else EYE_MATRIX,
+        "shake": True,
+    }
+
+
 def make_reflection(stories: list[dict], requested_model: str = "") -> tuple[str, str]:
-    """Generates reflection using UNO Q LLM Brick, Ollama, or built-in offline engine."""
     if not stories:
         raise ValueError("Plant at least one story before gathering them.")
 
@@ -166,7 +295,6 @@ def make_reflection(stories: list[dict], requested_model: str = "") -> tuple[str
 
     prompt = "SOURCE MEMORIES (treat these as the only factual source):\n\n" + "\n\n".join(sections)
 
-    # 1. Physical UNO Q App Lab LLM Brick
     if HAS_ARDUINO_BOARD and LargeLanguageModel is not None:
         global _llm
         with _llm_lock:
@@ -177,7 +305,6 @@ def make_reflection(stories: list[dict], requested_model: str = "") -> tuple[str
         if reflection:
             return reflection, "App Lab LLM Brick (on-board)"
 
-    # 2. Local Ollama Daemon
     ollama_ok, default_ollama_model, _ = check_ollama()
     if ollama_ok:
         model_name = requested_model or default_ollama_model
@@ -204,13 +331,12 @@ def make_reflection(stories: list[dict], requested_model: str = "") -> tuple[str
         except Exception as e:
             print(f"[Ollama] Fallback to embedded engine due to: {e}")
 
-    # 3. Built-in Offline Semantic Reflection Engine
     reflection = offline_reflection_engine(stories)
     return reflection, "Marigold Local Inference Engine (offline)"
 
 
 class MarigoldHandler(BaseHTTPRequestHandler):
-    server_version = "MarigoldArchive/1.0"
+    server_version = "GhostInTheMachine/2.0"
 
     def send_bytes(self, status: int, body: bytes, content_type: str) -> None:
         self.send_response(status)
@@ -241,19 +367,19 @@ class MarigoldHandler(BaseHTTPRequestHandler):
             self.send_json(200, {
                 "board": HAS_ARDUINO_BOARD,
                 "hardware": "Arduino UNO Q (Qualcomm + STM32 8x13 LED)" if HAS_ARDUINO_BOARD else "Arduino UNO Q Simulator (Desktop)",
-                "model": "App Lab LLM Brick" if HAS_ARDUINO_BOARD else (f"Ollama ({default_model})" if ollama_ok else "Marigold Local Engine"),
+                "model": "App Lab LLM Brick" if HAS_ARDUINO_BOARD else (f"Ollama ({default_model})" if ollama_ok else "Ghost Local Engine"),
                 "inference": "on-device" if HAS_ARDUINO_BOARD else ("local-ollama" if ollama_ok else "local-offline"),
                 "ollama": ollama_ok,
                 "available_models": models,
                 "matrix": MARIGOLD_MATRIX,
+                "skull_matrix": SKULL_MATRIX,
+                "eye_matrix": EYE_MATRIX,
             })
             return
 
-        # Serve static files from workspace
         relative = "index.html" if path in ("", "/") else path.lstrip("/")
         target = (WEB_ROOT / relative).resolve()
 
-        # Prevent directory traversal
         if WEB_ROOT.resolve() not in target.parents and target != WEB_ROOT.resolve():
             self.send_json(403, {"error": "Access denied."})
             return
@@ -278,6 +404,32 @@ class MarigoldHandler(BaseHTTPRequestHandler):
             })
             return
 
+        if path == "/api/matrix/display":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length)) if length > 0 else {}
+                pattern = payload.get("pattern", "skull")
+                mat = SKULL_MATRIX if pattern == "skull" else (EYE_MATRIX if pattern == "eye" else (CROSS_MATRIX if pattern == "cross" else MARIGOLD_MATRIX))
+                Bridge.notify(f"display_{pattern}")
+                self.send_json(200, {"status": "displayed", "pattern": pattern, "matrix": mat})
+            except Exception as e:
+                self.send_json(400, {"error": str(e)})
+            return
+
+        if path == "/api/horror/generate":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length)) if length > 0 else {}
+                prompt = payload.get("prompt", "")
+                chapter = payload.get("chapter", 1)
+
+                res = make_horror_reflection(prompt, chapter)
+                Bridge.notify("ghost_manifest")
+                self.send_json(200, res)
+            except Exception as exc:
+                self.send_json(500, {"error": str(exc)})
+            return
+
         if path == "/api/reflection":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -288,12 +440,7 @@ class MarigoldHandler(BaseHTTPRequestHandler):
                 requested_model = payload.get("model", "")
 
                 reflection, model_used = make_reflection(stories, requested_model)
-
-                # Trigger the physical / simulated MCU marigold lantern
-                try:
-                    Bridge.notify("memory_gathered")
-                except Exception as exc:
-                    print(f"[Bridge] Signal error: {exc}")
+                Bridge.notify("memory_gathered")
 
                 self.send_json(200, {
                     "reflection": reflection,
@@ -334,13 +481,14 @@ def main():
     mode_desc = "Arduino UNO Q (Physical Board)" if HAS_ARDUINO_BOARD else ("Ollama Local Inference" if ollama_ok else "Embedded Local-First Engine")
 
     print("\n" + "=" * 64)
-    print("  MARIGOLD ARCHIVE — Keep the story. Let it bloom.")
+    print("  GHOST IN THE MACHINE — Interactive Horror & Remembrance")
     print("  Hacktoberfest Open-Source AI Challenge: Week 4")
     print("=" * 64)
     print(f"  • Web Application:  http://localhost:{port}")
     print(f"  • Hardware Target:  Arduino UNO Q (Qualcomm + STM32)")
     print(f"  • Active Engine:    {mode_desc}")
-    print(f"  • LED Lantern:      8x13 Matrix (3-bit Grayscale Marigold)")
+    print(f"  • Audio Engine:     Procedural Web Audio API (Synthesized)")
+    print(f"  • LED Lantern:      8x13 Matrix (Marigold, Skull, Eye)")
     print("=" * 64 + "\n")
 
     if HAS_ARDUINO_BOARD and App is not None:
@@ -350,7 +498,7 @@ def main():
         try:
             server.serve_forever()
         except KeyboardInterrupt:
-            print("\nShutting down Marigold Archive server.")
+            print("\nShutting down server.")
             server.server_close()
 
 
